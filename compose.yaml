@@ -2,7 +2,7 @@ services:
   nginx:
     build: ./nginx
     ports:
-      - "${RAG_HTTP_BIND:-127.0.0.1}:${RAG_HTTP_PORT:-80}:80"
+      - "${RAG_HTTP_BIND:-127.0.0.1}:${RAG_HTTP_PORT:-18080}:80"
     depends_on:
       mcp:
         condition: service_started

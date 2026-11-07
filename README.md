@@ -68,12 +68,14 @@ reauthorizes evidence before returning it.
 Run `docker compose up -d --build --wait nginx` to build and start the reverse proxy
 in the same stack. The Nginx image includes its configuration so deployment does
 not depend on the source checkout being mounted on the Docker host.
-It serves `/mcp` for the `rag.psykonic.com` hostname and listens on loopback by default.
-Test the local route with `curl --resolve rag.psykonic.com:80:127.0.0.1 -i http://rag.psykonic.com/mcp`.
+It serves `/mcp` for the `rag.psykonic.com` hostname at `127.0.0.1:18080` by default.
+Test the local route with `curl -i -H "Host: rag.psykonic.com" http://127.0.0.1:18080/mcp`.
 An MCP response about the request method or Accept header confirms the route.
 
-For public HTTPS, point the DNS record at your TLS ingress and forward requests
-to this Nginx listener while preserving the `rag.psykonic.com` Host header.
+For public HTTPS, point the DNS record at your TLS ingress. If the ingress runs
+on the VPS host, forward requests to `http://127.0.0.1:18080` and preserve the
+`rag.psykonic.com` Host header. A containerized ingress needs a reachable
+address or a shared Docker network.
 Set `RAG_HTTP_BIND` and `RAG_HTTP_PORT` if the ingress needs a different reachable
 interface or port. Use `https://rag.psykonic.com/mcp` in the MCP client once DNS and
 TLS are live.
