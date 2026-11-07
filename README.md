@@ -65,7 +65,9 @@ reauthorizes evidence before returning it.
 
 ### Nginx and the domain
 
-Run `docker compose up -d --wait nginx` to start the reverse proxy in the same stack.
+Run `docker compose up -d --build --wait nginx` to build and start the reverse proxy
+in the same stack. The Nginx image includes its configuration so deployment does
+not depend on the source checkout being mounted on the Docker host.
 It serves `/mcp` for the `rag.psykonic.com` hostname and listens on loopback by default.
 Test the local route with `curl --resolve rag.psykonic.com:80:127.0.0.1 -i http://rag.psykonic.com/mcp`.
 An MCP response about the request method or Accept header confirms the route.
