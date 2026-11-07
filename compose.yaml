@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_USER: ${KS_PG_USER:-postgres}
+      POSTGRES_PASSWORD: ${KS_PG_PASSWORD:-postgres}
+      POSTGRES_DB: ${KS_PG_DB:-postgres}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18+ images expect the mount at /var/lib/postgresql, not at
+      # /var/lib/postgresql/data: the entrypoint keeps major-version-specific
+      # subdirectories so pg_upgrade works without crossing a mount boundary.
+      # Mounting the old path makes the container exit 1 on first start.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KS_PG_USER:-postgres} -d ${KS_PG_DB:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  surrealdb:
+    image: surrealdb/surrealdb:v3.3.5
+    # The image runs as the `nonroot` user and ships no shell, so a freshly created named
+    # volume (root-owned) is not writable and rocksdb fails with "Permission denied" on
+    # /data/LOG. Run as root, which is what the image's own --allow-all default assumes.
+    user: root
+    # Credentials come from the same variables the client reads (KS_SURREAL_*), so one
+    # .env configures both sides and they cannot drift.
+    command: >
+      start --user ${KS_SURREAL_USER:-root} --pass ${KS_SURREAL_PASSWORD:-root}
+      --bind 0.0.0.0:8000 --log warn --allow-all --no-banner rocksdb:/data
+    ports:
+      - "${SURREAL_PORT:-8000}:8000"
+    volumes:
+      - surrealdata:/data
+    healthcheck:
+      test: ["CMD", "/surreal", "isready", "--endpoint", "http://127.0.0.1:8000"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  falkordb:
+    image: falkordb/falkordb:v4.22.3
+    environment:
+      # Present inside the container so the healthcheck can decide whether to AUTH.
+      KS_FALKOR_PASSWORD: ${KS_FALKOR_PASSWORD:-}
+    # Same rule: KS_FALKOR_PASSWORD configures the server and is what the client sends.
+    # An empty value means no password configured, and the client then sends no AUTH —
+    # redis-cli rejects AUTH against a server with no password, so the healthcheck has to
+    # match the server's mode rather than always authenticating.
+    command:
+      - redis-server
+      - --loadmodule
+      - /var/lib/falkordb/bin/falkordb.so
+      - --requirepass
+      - ${KS_FALKOR_PASSWORD:-}
+    ports:
+      - "${FALKOR_PORT:-6379}:6379"
+    volumes:
+      - falkordata:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          if [ -n "$${KS_FALKOR_PASSWORD}" ];
+          then redis-cli -a "$${KS_FALKOR_PASSWORD}" --no-auth-warning ping;
+          else redis-cli ping; fi
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pgdata:
+  surrealdata:
+  falkordata:

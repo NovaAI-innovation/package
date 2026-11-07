@@ -1,0 +1,16 @@
+# falkordb/constraints.txt
+# Spec: 04-falkordb-graphrag.md §"Indexes and constraints"
+#
+# Each line is one complete FalkorDB command. `ks deploy --target falkor` substitutes
+# <graph> with the registry's graph key, issues them one at a time, then verifies every
+# constraint reaches OPERATIONAL. A constraint left PENDING/UNDER CONSTRUCTION/FAILED is
+# a deployment failure — uniqueness that never becomes operational is not uniqueness.
+#
+# Uniqueness requires the supporting exact-match index created by graph_bootstrap.cypher.
+
+GRAPH.CONSTRAINT CREATE <graph> UNIQUE NODE Entity PROPERTIES 1 entity_id
+GRAPH.CONSTRAINT CREATE <graph> MANDATORY NODE Entity PROPERTIES 3 entity_id kind canonical_key
+GRAPH.CONSTRAINT CREATE <graph> UNIQUE NODE Assertion PROPERTIES 1 assertion_id
+GRAPH.CONSTRAINT CREATE <graph> MANDATORY NODE Assertion PROPERTIES 7 assertion_id doc_revision_key document_id revision predicate polarity confidence_ppm
+GRAPH.CONSTRAINT CREATE <graph> UNIQUE NODE Evidence PROPERTIES 1 evidence_id
+GRAPH.CONSTRAINT CREATE <graph> MANDATORY NODE Evidence PROPERTIES 7 evidence_id doc_revision_key document_id revision chunk_id byte_start byte_end

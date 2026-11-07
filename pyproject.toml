@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowledge-schema"
+version = "1.0.0"
+description = "Deployment and acceptance tooling for the AI-agents knowledge platform schema (release 1.0.0)"
+requires-python = ">=3.11"
+dependencies = [
+  "psycopg[binary]>=3.1",
+  "httpx>=0.27",
+  "falkordb>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+ks = "ks.cli:main"
+
+[tool.setuptools]
+packages = ["ks", "ks.stores", "ks.checks"]
+
+[tool.setuptools.package-data]
+ks = ["../db/postgres/*.sql", "../db/surrealdb/*.surql", "../db/falkordb/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

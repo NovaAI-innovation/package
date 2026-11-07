@@ -1,0 +1,42 @@
+{
+  "spec_release": "1.0.0",
+  "package": "knowledge-schema",
+  "package_version": "1.0.0",
+  "generated_at": "2026-11-06",
+  "pins": {
+    "postgres": {
+      "server": "PostgreSQL 18.6",
+      "image": "postgres:18.6",
+      "minimum": "PostgreSQL 15",
+      "notes": "Spec targets standard features available in PostgreSQL 15+. Verified here on 18.3 (host) and 18.6 image."
+    },
+    "supabase": {
+      "extends": "postgres",
+      "stub_objects": ["auth.users", "anon", "authenticated", "service_role"],
+      "notes": "Spec 02 bootstrap is applied with stub Supabase Auth objects in tests. Real Supabase project migration is an implementation gate."
+    },
+    "surrealdb": {
+      "server": "3.3.5",
+      "image": "surrealdb/surrealdb:v3.3.5",
+      "dialect": "SurrealQL 3.x"
+    },
+    "falkordb": {
+      "server": "4.22.3",
+      "image": "falkordb/falkordb:v4.22.3",
+      "client": "falkordb-py >= 1.0"
+    },
+    "embedding": {
+      "model": "reference-model-unpinned",
+      "dimension": 1536,
+      "distance": "cosine",
+      "notes": "Spec 03 fixes the reference vector shape at 1536 floats / cosine. Bind the exact model revision in the location recipe_sha256 before production use."
+    },
+    "python": ">=3.11"
+  },
+  "pinnable_but_unpinned": [
+    "parser recipe revision",
+    "chunker recipe revision",
+    "extraction (graph) recipe revision",
+    "embedding model revision"
+  ]
+}
