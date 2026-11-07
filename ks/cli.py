@@ -129,9 +129,9 @@ def cmd_status(args: argparse.Namespace) -> int:
     cp = ControlPlane(settings)
     print(f"ks {__version__}")
     try:
-        plan = cp.plan()
         applied = cp.applied()
-        print(f"\npostgres ({settings.pg_dsn.split('@')[-1]})")
+        plan = cp.plan(applied)
+        print("\npostgres")
         for version, name, digest, done in plan:
             mark = "applied" if done else ("DRIFTED" if version in applied else "pending")
             print(f"  {version:04d} {name:<24} {mark:<8} {digest[:12]}")

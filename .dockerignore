@@ -1,0 +1,9 @@
+**
+!Dockerfile
+!requirements.txt
+!ks/
+!ks/**/
+!ks/**/*.py
+!db/
+!db/postgres/
+!db/postgres/*.sql

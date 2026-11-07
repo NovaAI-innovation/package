@@ -28,13 +28,53 @@ tests/                    offline contract tests (no database required)
 ## Quickstart
 
 ```bash
-docker compose up -d            # three stores, health-checked
-pip install -e .
 cp .env.example .env            # one file configures client and containers
+docker compose up -d --wait
+python -m pip install -e .
 
 ks deploy --target all --supabase-stub   # migrations, generation bootstrap, constraints
 ks verify --provision                    # 35 acceptance checks across the four specs
 ```
+
+## MCP
+
+Start the MCP container and its database dependencies with
+`docker compose up -d --build --wait mcp`. The service uses Streamable HTTP at
+`http://127.0.0.1:8765/mcp` and talks to the databases over the Compose network.
+Set `MCP_PORT` in `.env` to change the published port. The published endpoint is
+local to the Docker host. For MCP clients that accept JSON configuration:
+
+```json
+{
+  "mcpServers": {
+    "knowledge-schema": {
+      "url": "http://127.0.0.1:8765/mcp"
+    }
+  }
+}
+```
+
+For clients using stdio, the host command is still
+`ks-mcp --env-file /absolute/path/to/package/.env`.
+The server advertises two read-only tools with empty input schemas and compact JSON
+responses. `status` reports reachability for PostgreSQL, SurrealDB's HTTP health
+endpoint, and FalkorDB. `migration_plan` counts matching PostgreSQL migrations and
+lists pending or drifted filenames. Apply migrations and provision stores with `ks`.
+Knowledge retrieval requires a router that verifies the immutable artifacts and
+reauthorizes evidence before returning it.
+
+### Nginx and the domain
+
+Run `docker compose up -d --wait nginx` to start the reverse proxy in the same stack.
+It serves `/mcp` for the `rag.psykonic.com` hostname and listens on loopback by default.
+Test the local route with `curl --resolve rag.psykonic.com:80:127.0.0.1 -i http://rag.psykonic.com/mcp`.
+An MCP response about the request method or Accept header confirms the route.
+
+For public HTTPS, point the DNS record at your TLS ingress and forward requests
+to this Nginx listener while preserving the `rag.psykonic.com` Host header.
+Set `RAG_HTTP_BIND` and `RAG_HTTP_PORT` if the ingress needs a different reachable
+interface or port. Use `https://rag.psykonic.com/mcp` in the MCP client once DNS and
+TLS are live.
 
 `--supabase-stub` creates `auth.users` and the three Supabase roles, which the control
 plane references; without it `0002_registry` fails with `schema "auth" does not exist`.
@@ -106,14 +146,13 @@ deterministic layer is caught before an acceptance run.
 
 ## Configuration
 
-See `.env.example`. One variable set configures both the client and the containers:
-`KS_PG_*` (DSN for `ks`, parts for compose), `KS_SURREAL_URL`/`_USER`/`_PASSWORD`, and
-`KS_FALKOR_HOST`/`_PORT`/`_PASSWORD`. Credentials are read from the environment only;
-nothing is written to disk.
+See `.env.example`. The CLI and MCP read the package's `.env` by default.
+Explicit client endpoints override the localhost defaults built from the published
+ports. Keep the file private when it contains credentials.
 
-Shell environment variables take precedence over `.env` in compose. If a stack was ever
-started with different credentials, `docker compose down -v && docker compose up -d`
-recreates it from the current file — a plain `restart` reuses the old container spec.
+Process environment variables override `.env` for both Compose and Python. An existing
+PostgreSQL or SurrealDB volume retains the credentials initialized in that database.
+Use the existing credentials or rotate them in the database before updating `.env`.
 
 ## Limits
 

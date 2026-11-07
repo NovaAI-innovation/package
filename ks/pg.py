@@ -45,7 +45,7 @@ class ControlPlane:
 
     @contextmanager
     def admin(self):
-        conn = psycopg.connect(self.settings.pg_dsn, autocommit=True)
+        conn = psycopg.connect(self.settings.pg_dsn, autocommit=True, connect_timeout=5)
         try:
             yield conn
         finally:
@@ -77,16 +77,17 @@ class ControlPlane:
             )
 
     def applied(self) -> dict[int, str]:
-        self.bootstrap_ledger()
         with self.admin() as conn:
+            if conn.execute("SELECT to_regclass('ops.schema_migrations')").fetchone()[0] is None:
+                return {}
             rows = conn.execute(
                 "SELECT version, sha256 FROM ops.schema_migrations WHERE target = 'postgres'"
             ).fetchall()
         return {int(v): str(h) for v, h in rows}
 
-    def plan(self) -> list[tuple[int, str, str, bool]]:
+    def plan(self, applied: dict[int, str] | None = None) -> list[tuple[int, str, str, bool]]:
         """(version, name, sha256, already_applied) for every migration file."""
-        done = self.applied()
+        done = self.applied() if applied is None else applied
         out = []
         for path, text in postgres_statements():
             version, name = _split(path.name)
@@ -95,7 +96,8 @@ class ControlPlane:
         return out
 
     def migrate(self, dry_run: bool = False, supabase_stub: bool = False) -> list[AppliedMigration]:
-        self.bootstrap_ledger()
+        if not dry_run:
+            self.bootstrap_ledger()
         if supabase_stub and not dry_run:
             from .settings import supabase_stub_text
 

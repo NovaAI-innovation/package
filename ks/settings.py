@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 import pathlib
 from dataclasses import dataclass
+from typing import Mapping
+
+from dotenv import dotenv_values
+from psycopg.conninfo import make_conninfo
 
 PKG_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB_ROOT = PKG_ROOT / "db"
@@ -25,18 +29,30 @@ class Settings:
     debug_ns: str
 
     @classmethod
-    def from_env(cls) -> "Settings":
-        fk_pass = os.environ.get("KS_FALKOR_PASSWORD") or None
+    def from_env(cls, env_file: str | None = None) -> "Settings":
+        path = pathlib.Path(env_file) if env_file else PKG_ROOT / ".env"
+        if env_file and not path.is_file():
+            raise FileNotFoundError(path)
+        env: Mapping[str, str] = {
+            **{key: value for key, value in dotenv_values(path).items() if value is not None},
+            **os.environ,
+        }
+        pg_dsn = env.get("KS_PG_DSN") or make_conninfo(
+            host=env.get("KS_PG_HOST") or "127.0.0.1",
+            port=env.get("PG_PORT") or "5432",
+            user=env.get("KS_PG_USER") or "postgres",
+            password=env.get("KS_PG_PASSWORD") or "postgres",
+            dbname=env.get("KS_PG_DB") or "postgres",
+        )
         return cls(
-            pg_dsn=os.environ.get(
-                "KS_PG_DSN", "postgresql://postgres:postgres@127.0.0.1:5432/postgres"
-            ),
-            surreal_url=os.environ.get("KS_SURREAL_URL", "http://127.0.0.1:8000").rstrip("/"),
-            surreal_user=os.environ.get("KS_SURREAL_USER", "root"),
-            surreal_password=os.environ.get("KS_SURREAL_PASSWORD", "root"),
-            falkor_host=os.environ.get("KS_FALKOR_HOST", "127.0.0.1"),
-            falkor_port=int(os.environ.get("KS_FALKOR_PORT", "6379")),
-            falkor_password=fk_pass,
+            pg_dsn=pg_dsn,
+            surreal_url=(env.get("KS_SURREAL_URL") or
+                         f"http://127.0.0.1:{env.get('SURREAL_PORT') or '8000'}").rstrip("/"),
+            surreal_user=env.get("KS_SURREAL_USER") or "root",
+            surreal_password=env.get("KS_SURREAL_PASSWORD") or "root",
+            falkor_host=env.get("KS_FALKOR_HOST") or "127.0.0.1",
+            falkor_port=int(env.get("KS_FALKOR_PORT") or env.get("FALKOR_PORT") or "6379"),
+            falkor_password=env.get("KS_FALKOR_PASSWORD") or None,
             debug_ns=FALLBACK_NS,
         )
 
